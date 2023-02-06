@@ -17,7 +17,6 @@ return new class extends Migration
     {
         $this->newGameTable('dice');
         Schema::table('games_dice', function (Blueprint $table) {
-            $table->unique(['seed_id','nonce']);
             $table->decimal('target', 8,2);
             $table->decimal('target_multiplier',10,4);
             $table->decimal('win_chance', 8,6);

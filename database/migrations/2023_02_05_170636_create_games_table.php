@@ -28,8 +28,27 @@ return new class extends Migration
             $table->addColumn('uint256', 'result');
             $table->boolean('is_winner')->storedAs('result > amount');
             $table->float('multiplier', 10,4)->storedAs('result/amount');
-            $table->unique(['seed_id','nonce']);
+            $table->unique(['user_id','seed_id','nonce']);
         });
+
+        $sql = /** @lang PostgreSQL */ <<<SQL
+            CREATE OR REPLACE FUNCTION nonce_available(_nonce bigint, _user_id bigint, _seed_id bigint, _id bigint)
+              RETURNS bool AS
+            $$
+            SELECT NOT EXISTS (SELECT 1 FROM games WHERE nonce = $1 and user_id = $2 and seed_id = $3 and id<>$4);
+            $$  LANGUAGE sql STABLE;
+        SQL;
+        Schema::getConnection()->unprepared($sql);
+
+
+        $sql = /** @lang PostgreSQL */ <<<SQL
+            ALTER TABLE games ADD CONSTRAINT game_nonce_unique
+            CHECK (nonce_available(nonce, user_id, seed_id, id)) NOT VALID;
+        SQL;
+        Schema::getConnection()->unprepared($sql);
+
+
+
     }
 
     /**

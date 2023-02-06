@@ -2,11 +2,11 @@
 
 namespace App\Models\Games;
 
+use App\Models\Game;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class Gems extends Model
+class Gems extends Game
 {
-    protected $table = 'games_dice';
+    protected $table = 'games_gems';
     use HasFactory;
 }

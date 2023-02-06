@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\games;
+use App\Models\Game;
 use Illuminate\Http\Request;
 
 class GamesController extends Controller
@@ -31,10 +31,10 @@ class GamesController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\games  $games
+     * @param  \App\Models\Game  $games
      * @return \Illuminate\Http\Response
      */
-    public function show(games $games)
+    public function show(Game $games)
     {
         //
     }
@@ -43,10 +43,10 @@ class GamesController extends Controller
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\games  $games
+     * @param  \App\Models\Game  $games
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, games $games)
+    public function update(Request $request, Game $games)
     {
         //
     }
@@ -54,10 +54,10 @@ class GamesController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\games  $games
+     * @param  \App\Models\Game  $games
      * @return \Illuminate\Http\Response
      */
-    public function destroy(games $games)
+    public function destroy(Game $games)
     {
         //
     }
