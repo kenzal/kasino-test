@@ -3,7 +3,6 @@
 namespace Database\Traits;
 
 use Illuminate\Database\Connection;
-use Illuminate\Database\Connectors\Connector;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 
