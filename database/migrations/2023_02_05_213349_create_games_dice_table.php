@@ -15,9 +15,8 @@ return new class extends Migration
      */
     public function up()
     {
-        $this->newGame('dice');
+        $this->newGameTable('dice');
         Schema::table('games_dice', function (Blueprint $table) {
-            $table->primary('id');
             $table->unique(['seed_id','nonce']);
             $table->decimal('target', 8,2);
             $table->decimal('target_multiplier',10,4);

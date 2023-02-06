@@ -15,7 +15,7 @@ return new class extends Migration
      */
     public function up()
     {
-        $this->newGame('gems');
+        $this->newGameTable('gems');
 
     }
 
