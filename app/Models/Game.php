@@ -6,7 +6,6 @@ use App\Exceptions\Games\GameImmutableException;
 use App\Http\Resources\GameResource;
 use App\Models\Traits\Relations\BelongsToUser;
 use Carbon\Carbon;
-use http\Exception\InvalidArgumentException;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Http\Resources\Json\JsonResource;
