@@ -34,4 +34,10 @@ class Seed extends BaseModel
     protected $hidden = [
         'server_seed',
     ];
+
+    protected function getArrayableItems(array $values)
+    {
+        $this->makeVisibleIf(fn()=>$this->revealed_at, 'server_seed');
+        return parent::getArrayableItems($values);
+    }
 }

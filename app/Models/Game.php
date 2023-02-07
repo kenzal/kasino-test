@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use App\Exceptions\Games\GameImmutableException;
+use App\Http\Resources\GameResource;
 use App\Models\Traits\Relations\BelongsToUser;
 use Carbon\Carbon;
+use http\Exception\InvalidArgumentException;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * @property      string   $amount
@@ -38,6 +41,8 @@ class Game extends BaseModel
         'user_id',
     ];
 
+    protected $with = ['currency'];
+
     protected $casts = [
         'is_winner' => 'boolean',
     ];
@@ -50,6 +55,17 @@ class Game extends BaseModel
     public function currency(): BelongsTo|Currency
     {
         return $this->belongsTo(Currency::class);
+    }
+
+    public function toResource(string $resource = null): JsonResource
+    {
+        $resource ??= class_exists($found = str_replace('App\Models', 'App\Http\Resources', static::class).'Resource')
+            ? $found
+            : GameResource::class;
+        if(!is_subclass_of($resource, JsonResource::class)) {
+            throw new \InvalidArgumentException;
+        }
+        return new $resource($this);
     }
 
     /**

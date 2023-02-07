@@ -29,4 +29,14 @@ class Currency extends BaseModel
         'chain',
         'contract',
     ];
+
+    public function toDisplay(string $amount): string
+    {
+        return bcdiv($amount, bcpow(10, $this->decimals), $this->display_decimals);
+    }
+
+    public function fromDisplay(string $amount): string
+    {
+        return bcmul($amount, bcpow(10, $this->decimals));
+    }
 }
