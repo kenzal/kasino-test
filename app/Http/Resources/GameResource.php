@@ -24,6 +24,7 @@ class GameResource extends JsonResource
     {
         return [
             'id'               => $this->id,
+            'href'             => route('game', $this),
             'timestamp'        => $this->created_at,
             'name'             => $this->name,
             'currency'         => $this->currency->symbol,

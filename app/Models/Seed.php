@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Traits\Relations\BelongsToUser;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property      string $client_seed
@@ -37,7 +38,15 @@ class Seed extends BaseModel
 
     protected function getArrayableItems(array $values)
     {
-        $this->makeVisibleIf(fn()=>$this->revealed_at, 'server_seed');
+        $this->makeVisibleIf(fn() => $this->revealed_at, 'server_seed');
         return parent::getArrayableItems($values);
+    }
+
+    /**
+     * @return HasMany|Game[]
+     */
+    public function games(): HasMany|array
+    {
+        return $this->hasMany(Game::class);
     }
 }

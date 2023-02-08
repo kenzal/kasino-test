@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Database\Grammar;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -27,5 +28,6 @@ class AppServiceProvider extends ServiceProvider
         //Add uint256 Type to column types
         Grammar::macro('typeUint256', fn()=>'uint256');
         Grammar::macro('typeOverUnder', fn()=>'over_under');
+        JsonResource::withoutWrapping();
     }
 }

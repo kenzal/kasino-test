@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Exceptions\Games\GameImmutableException;
 use App\Http\Resources\GameResource;
 use App\Models\Traits\Relations\BelongsToUser;
+use BadMethodCallException;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -112,5 +113,23 @@ class Game extends BaseModel
             return $model;
         }
         return parent::newFromBuilder($attributes, $connection);
+    }
+
+    public function getHash(): string
+    {
+        return hash('sha256',
+                    implode(':',
+                            [
+                                $this->seed->server_seed,
+                                $this->seed->client_seed,
+                                $this->nonce
+                            ]
+                    )
+        );
+    }
+
+    public function play(): self
+    {
+        throw new BadMethodCallException("Greetings Professor Falken");
     }
 }

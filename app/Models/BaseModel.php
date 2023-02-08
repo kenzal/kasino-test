@@ -2,10 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use function PHPUnit\Framework\isInstanceOf;
 
+/**
+ * @mixin Builder
+ * @method static FirstOrCreate(array $attributes = [], array $values = []): Builder|self
+ * @method static firstOrFail($columns = ['*']): self
+ */
 class BaseModel extends Model
 {
     protected $tablePrefix = '';
