@@ -27,7 +27,7 @@ class DiceResource extends GameResource
             'target_multiplier' => $this->target_multiplier,
             'win_chance'        => $this->win_chance,
             'direction'         => ucfirst($this->direction->value),
-            'lucky_number'      => $this->lucky_number,
+            'lucky_number'      => $this->when($this->isCompleted, $this->lucky_number),
         ]);
     }
 }

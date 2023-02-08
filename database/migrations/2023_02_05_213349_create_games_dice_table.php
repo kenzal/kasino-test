@@ -21,7 +21,7 @@ return new class extends Migration
             $table->decimal('target_multiplier',10,4);
             $table->decimal('win_chance', 8,6);
             $table->addColumn('overUnder', 'direction');
-            $table->decimal('lucky_number', 5,2);
+            $table->decimal('lucky_number', 5,2)->nullable();
         });
     }
 
@@ -32,6 +32,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('games_dices');
+        Schema::dropIfExists('games_dice');
     }
 };

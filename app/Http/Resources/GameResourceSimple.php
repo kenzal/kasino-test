@@ -26,12 +26,19 @@ class GameResourceSimple extends JsonResource
             'id'         => $this->id,
             'href'       => route('game', $this),
             'timestamp'  => $this->created_at,
+            'completed_at' => $this->completed_at,
             'name'       => $this->name,
             'currency'   => $this->currency->symbol,
             'amount'     => floatval($this->currency->toDisplay($this->amount)),
-            'result'     => floatval($this->currency->toDisplay($this->result)),
-            'is_winner'  => $this->is_winner,
-            'multiplier' => floatval(sprintf('%0.02f', $this->multiplier)),
+            'completed'  => $this->isCompleted,
+            $this->mergeWhen(
+                $this->isCompleted,
+                [
+                    'result'     => floatval($this->currency->toDisplay($this->result)),
+                    'is_winner'  => $this->is_winner,
+                    'multiplier' => floatval(sprintf('%0.02f', $this->multiplier)),
+                ]
+            ),
             $this->mergeWhen($this->relationLoaded('user'), [
                 'username' => $this->user->name,
             ])

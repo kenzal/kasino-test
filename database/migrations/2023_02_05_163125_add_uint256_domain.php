@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::getConnection()->unprepared("DROP DOMAIN uint256 IF EXISTS RESTRICT");
+        Schema::getConnection()->unprepared("DROP DOMAIN IF EXISTS uint256 RESTRICT");
     }
 };

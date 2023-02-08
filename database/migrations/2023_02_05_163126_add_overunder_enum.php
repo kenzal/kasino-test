@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::getConnection()->unprepared("DROP TYPE over_under IF EXISTS RESTRICT");
+        Schema::getConnection()->unprepared("DROP TYPE IF EXISTS over_under RESTRICT");
     }
 };

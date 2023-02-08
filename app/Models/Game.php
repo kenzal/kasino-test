@@ -2,29 +2,27 @@
 
 namespace App\Models;
 
-use App\Exceptions\Games\GameImmutableException;
 use App\Http\Resources\GameResource;
 use App\Models\Traits\Relations\BelongsToUser;
 use BadMethodCallException;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * @property      string   $amount
+ * @property      Carbon   $completed_at
  * @property-read Carbon   $created_at
  * @property      Currency $currency
  * @property      int      $currency_id
  * @property-read int      $id
+ * @property-read bool     $isCompleted
  * @property-read bool     $is_winner
  * @property-read string   $multiplier
  * @property      string   $name
- * @property      int      $nonce
  * @property      string   $result
- * @property      Seed     $seed
- * @property      int      $seed_id
- * @property      int      $user_id
  */
 class Game extends BaseModel
 {
@@ -37,7 +35,6 @@ class Game extends BaseModel
         'currency_id',
         'name',
         'result',
-        'seed_id',
         'user_id',
     ];
 
@@ -47,14 +44,17 @@ class Game extends BaseModel
         'is_winner' => 'boolean',
     ];
 
-    public function seed(): BelongsTo|Seed
-    {
-        return $this->belongsTo(Seed::class);
-    }
-
     public function currency(): BelongsTo|Currency
     {
         return $this->belongsTo(Currency::class);
+    }
+
+    /**
+     * @return HasMany|Round[]
+     */
+    public function rounds(): HasMany|array
+    {
+        return $this->hasMany(Round::class, 'game_id')->orderBy('game_round');
     }
 
     public function toResource(string $resource = null): JsonResource
@@ -62,34 +62,17 @@ class Game extends BaseModel
         $resource ??= class_exists($found = str_replace('App\Models', 'App\Http\Resources', static::class).'Resource')
             ? $found
             : GameResource::class;
-        if(!is_subclass_of($resource, JsonResource::class)) {
+        if (!is_subclass_of($resource, JsonResource::class)) {
             throw new \InvalidArgumentException;
         }
         return new $resource($this);
     }
 
-    /**
-     * @throws GameImmutableException
-     */
-    public function refreshNonce(): self
-    {
-        if ($this->exists) {
-            throw new GameImmutableException;
-        }
-        $userId      = $this->user_id ?? $this->user->id;
-        $seedId      = $this->seed_id ?? $this->seed->id;
-        $this->nonce = Game::query()
-            ->where('user_id', $userId)
-            ->where('seed_id', $seedId)
-            ->selectRaw('COALESCE(MAX(nonce),0)+1 as "nonce"')->first()->nonce;
-        return $this;
 
-    }
-
-    protected function nonce(): Attribute
+    protected function isCompleted(): Attribute
     {
         return Attribute::make(
-            get: fn($value) => $value ?? $this->refreshNonce()->getAttributeValue('nonce'),
+            get: fn($value) => (bool) $this->completed_at,
         );
     }
 
@@ -115,21 +98,13 @@ class Game extends BaseModel
         return parent::newFromBuilder($attributes, $connection);
     }
 
-    public function getHash(): string
-    {
-        return hash('sha256',
-                    implode(':',
-                            [
-                                $this->seed->server_seed,
-                                $this->seed->client_seed,
-                                $this->nonce
-                            ]
-                    )
-        );
-    }
-
     public function play(): self
     {
         throw new BadMethodCallException("Greetings Professor Falken");
+    }
+
+    public function getActions(): array
+    {
+        return [];
     }
 }

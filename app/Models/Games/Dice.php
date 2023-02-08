@@ -6,6 +6,7 @@ use App\Enums\OverUnder;
 use App\Exceptions\Games\GameImmutableException;
 use App\Models\Currency;
 use App\Models\Game;
+use App\Models\Round;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\QueryException;
@@ -127,25 +128,35 @@ class Dice extends Game
      */
     public function play(): Dice
     {
-        while (!$this->exists) {
+        $this->save();
+        while (!$this->rounds()->count()) {
+            /** @var Round $round */
+            $round = $this->rounds()->make(
+                [
+                    'game_id'    => $this->id,
+                    'game_round' => 0,
+                ]);
+
             $this->user->unsetRelation('currentSeed');
-            $this->seed_id = $this->user->currentSeed->id;
-            if($this->isDirty('seed_id')) $this->load('seed');
-            $this->refreshNonce();
-            $hash = $this->getHash();
-            $num = 0;
+            $round->seed_id = $this->user->currentSeed->id;
+            $round->refreshNonce();
+            $hash = $round->getHash();
+            $num  = 0;
             bcscale(20);
-            $num = bcadd($num, bcdiv(hexdec(substr($hash,6,2)), bcpow(256,1)));
-            $num = bcadd($num, bcdiv(hexdec(substr($hash,4,2)), bcpow(256,2)));
-            $num = bcadd($num, bcdiv(hexdec(substr($hash,2,2)), bcpow(256,3)));
-            $num = bcadd($num, bcdiv(hexdec(substr($hash,0,2)), bcpow(256,4)));
+            $num = bcadd($num, bcdiv(hexdec(substr($hash, 6, 2)), bcpow(256, 1)));
+            $num = bcadd($num, bcdiv(hexdec(substr($hash, 4, 2)), bcpow(256, 2)));
+            $num = bcadd($num, bcdiv(hexdec(substr($hash, 2, 2)), bcpow(256, 3)));
+            $num = bcadd($num, bcdiv(hexdec(substr($hash, 0, 2)), bcpow(256, 4)));
 
             $this->lucky_number = bcmul($num, '100.01',2);
+            $round->result = $this->lucky_number;
 
             $isWinner = $this->direction == OverUnder::UNDER ? $this->lucky_number < $this->target : $this->lucky_number>$this->target;
             bcscale(0);
             $this->result = bcmul((int)$isWinner, bcmul($this->amount, $this->target_multiplier));
             try {
+                $round->save();
+                $this->completed_at = $round->refresh()->created_at;
                 $this->save();
             } catch (QueryException $e) {
                 //try again

@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\Games\GameImmutableException;
 use App\Http\Requests\Games;
 use App\Http\Resources\GameCollection;
 use App\Models\Game;
@@ -8,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,7 +21,7 @@ use Illuminate\Support\Facades\Route;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
-Auth::loginUsingId(1);
+Auth::loginUsingId(2);
 Route::middleware('auth:sanctum')->get('/user',
     function (Request $request) {
         return $request->user();
@@ -36,6 +38,18 @@ Route::get('/games/{game}',
     function (Request $request, Game $game) {
         return $game->refresh()->toResource();
     })->name('game');
+Route::post('/games/{game}/{action}',
+    function (Request $request, Game $game, string $action) {
+        if ($game->isCompleted) {
+            throw new GameImmutableException;
+        }
+        if (!in_array($action, $game->getActions())) {
+            throw new BadRequestException;
+        }
+        $game->$action;
+        return $game->refresh()
+                    ->toResource();
+    })->name('gameAction');
 Route::post('/play/dice',
     function (Games\DiceRequest $request) {
         /** @var User $user */

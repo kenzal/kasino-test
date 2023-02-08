@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Trait BelongsToUser.
  *
  * @property User $user
+ * @property int  $user_id
  */
 trait BelongsToUser
 {

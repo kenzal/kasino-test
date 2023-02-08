@@ -23,21 +23,36 @@ class GameResource extends JsonResource
     public function toArray($request): array|Arrayable|JsonSerializable
     {
         return [
-            'id'               => $this->id,
-            'href'             => route('game', $this),
-            'timestamp'        => $this->created_at,
-            'name'             => $this->name,
-            'currency'         => $this->currency->symbol,
-            'amount'           => floatval($this->currency->toDisplay($this->amount)),
-            'result'           => floatval($this->currency->toDisplay($this->result)),
-            'raw_amount'       => $this->amount,
-            'raw_result'       => $this->result,
-            'is_winner'        => $this->is_winner,
-            'multiplier'       => sprintf('%0.00f', $this->multiplier),
-            'client_seed'      => $this->seed->client_seed,
-            'server_seed'      => $this->seed->revealed_at ? $this->seed->server_seed : null,
-            'server_seed_hash' => $this->seed->server_seed_hashed,
-            'nonce'            => $this->nonce,
+            'id'           => $this->id,
+            'href'         => route('game', $this),
+            'timestamp'    => $this->created_at,
+            'completed_at' => $this->completed_at,
+            'name'         => $this->name,
+            'currency'     => $this->currency->symbol,
+            'amount'       => floatval($this->currency->toDisplay($this->amount)),
+            'raw_amount'   => $this->amount,
+            'username'     => $this->user->name,
+            'completed'    => $this->isCompleted,
+            $this->mergeWhen(
+                $this->isCompleted,
+                [
+                    'result'      => floatval($this->currency->toDisplay($this->result)),
+                    'raw_result'  => $this->result,
+                    'is_winner'   => $this->is_winner,
+                    'multiplier'  => sprintf('%0.00f', $this->multiplier),
+                    'round_count' => $this->rounds()->count(),
+                ]),
+            $this->mergeWhen(
+                !$this->isCompleted && $this->user_id == $request->user()->id,
+                [
+                    'actions' => array_map(
+                        fn($action) => [
+                            'action' => $action,
+                            'href'   => route('gameAction', ['action' => $action, 'game' => $this])
+                        ],
+                        $this->getActions()),
+                ]
+            )
         ];
     }
 }
