@@ -2,7 +2,7 @@
 
 namespace App\Models\Games;
 
-use App\Enums\Games\Gems\Gems as GemEnum;
+use App\Enums\Games\Gems\Gem as GemEnum;
 use App\Models\Game;
 use App\Models\Round;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

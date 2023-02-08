@@ -2,7 +2,7 @@
 
 namespace App\Http\Resources\Games;
 
-use App\Enums\Games\Gems\Gems;
+use App\Enums\Games\Gems\Gem;
 use App\Http\Resources\GameResource;
 use App\Models\Games\Dice;
 use App\Models\Round;
@@ -35,8 +35,8 @@ class GemsResource extends GameResource
                         'outcome' => array_map(
                             fn(int $symbol) => [
                                 'value' => $symbol,
-                                'color' => Gems::tryFrom($symbol)->getColor(),
-                                'name'  => Gems::tryFrom($symbol)->getGem(),
+                                'color' => Gem::tryFrom($symbol)->getColor(),
+                                'name'  => Gem::tryFrom($symbol)->getGem(),
                                 'found' => $this->when(count($found=array_keys(array_filter($finalRound->result, fn($n)=>$n==$symbol)))>1,$found),
                             ],
                             $finalRound->result

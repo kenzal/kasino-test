@@ -2,7 +2,7 @@
 
 namespace App\Enums\Games\Gems;
 
-enum Gems: int
+enum Gem: int
 {
     case GREY   = 0;
     case RED    = 1;
