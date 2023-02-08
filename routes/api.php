@@ -1,10 +1,13 @@
 <?php
 
 use App\Exceptions\Games\GameImmutableException;
+use App\Http\Controllers\CurrencyController;
 use App\Http\Requests\Games;
+use App\Http\Requests\Games\GemsRequest;
 use App\Http\Resources\GameCollection;
 use App\Models\Game;
 use App\Models\Games\Dice;
+use App\Models\Games\Gems;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,6 +29,8 @@ Route::middleware('auth:sanctum')->get('/user',
     function (Request $request) {
         return $request->user();
     });
+Route::resource('currency', CurrencyController::class)
+     ->only(['index', 'show']);
 
 Route::get('/games',
     function (Request $request) {
@@ -82,7 +87,19 @@ Route::post('/play/dice',
                     ->header('Location', route('game', $game));
     });
 Route::post('/play/gems',
-    function (Request $request) {
+    function (GemsRequest $request) {
+        /** @var User $user */
+        $user = $request->user();
+        $game = new Gems(['amount' => $request->amount]);
+        $game->user()->associate($user);
+        $game->currency()->associate($request->currency);
+        $game->play();
+
+        return $game->refresh()
+                    ->toResource()
+                    ->response()
+                    ->header('Location', route('game', $game));
+
     });
 Route::get('/seeds',
     function (Request $request) {

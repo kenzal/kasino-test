@@ -12,17 +12,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  *
- * @property-read Carbon            $created_at
- * @property      Game              $game
- * @property      int               $game_id
- * @property      int               $game_round
- * @property-read int               $id
- * @property      int               $nonce
- * @property      Round|null        $previous_round
- * @property      int               $previous_round_id
- * @property      string|int|object $result
- * @property      Seed              $seed
- * @property      int               $seed_id
+ * @property-read Carbon                  $created_at
+ * @property      Game                    $game
+ * @property      int                     $game_id
+ * @property      int                     $game_round
+ * @property-read int                     $id
+ * @property      int                     $nonce
+ * @property      Round|null              $previous_round
+ * @property      int                     $previous_round_id
+ * @property      string|int|object|array $result
+ * @property      Seed                    $seed
+ * @property      int                     $seed_id
  */
 class Round extends Model
 {
