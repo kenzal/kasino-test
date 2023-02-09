@@ -3,11 +3,14 @@
 use App\Exceptions\Games\GameImmutableException;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Requests\Games;
+use App\Http\Requests\Games\BlackjackRequest;
 use App\Http\Requests\Games\GemsRequest;
 use App\Http\Resources\GameCollection;
 use App\Models\Game;
+use App\Models\Games\Blackjack;
 use App\Models\Games\Dice;
 use App\Models\Games\Gems;
+use App\Models\Round;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -51,7 +54,8 @@ Route::post('/games/{game}/{action}',
         if (!in_array($action, $game->getActions())) {
             throw new BadRequestException;
         }
-        $game->$action;
+        $method = 'action'.ucfirst($action);
+        $game->$method();
         return $game->refresh()
                     ->toResource();
     })->name('gameAction');
@@ -101,6 +105,21 @@ Route::post('/play/gems',
                     ->header('Location', route('game', $game));
 
     });
+Route::post('/play/blackjack',
+    function (BlackjackRequest $request) {
+        /** @var User $user */
+        $user = $request->user();
+        $game = new Blackjack(['amount' => $request->amount]);
+        $game->user()->associate($user);
+        $game->currency()->associate($request->currency);
+        $game->play();
+
+        return $game->refresh()
+                    ->toResource()
+                    ->response()
+                    ->header('Location', route('game', $game));
+
+    });
 Route::get('/seeds',
     function (Request $request) {
     });
@@ -108,5 +127,10 @@ Route::post('/seeds',
     function (Request $request) {
     });
 
-
+Route::get('/test',
+    function (Request $request) {
+    $data = Round::find(37)->result;
+    $obj = new \App\Values\Games\Blackjack\RoundResult($data);
+    return $obj;
+    });
 

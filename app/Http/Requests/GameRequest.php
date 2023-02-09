@@ -43,8 +43,8 @@ abstract class GameRequest extends FormRequest
     {
         $this->merge(
             [
-                'currency' => Currency::bySymbol($this->currency),
-                'amount'   => Currency::bySymbol($this->currency)
+                'currency' => Currency::fromSymbol($this->currency),
+                'amount'   => Currency::fromSymbol($this->currency)
                                       ->fromDisplay($this->amount),
             ]);
 

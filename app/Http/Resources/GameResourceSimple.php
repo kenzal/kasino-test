@@ -34,7 +34,7 @@ class GameResourceSimple extends JsonResource
             $this->mergeWhen(
                 $this->isCompleted,
                 [
-                    'result'     => floatval($this->currency->toDisplay($this->result)),
+                    'result'     => floatval($this->currency->toDisplay($this->result ?? '')),
                     'is_winner'  => $this->is_winner,
                     'multiplier' => floatval(sprintf('%0.02f', $this->multiplier)),
                 ]

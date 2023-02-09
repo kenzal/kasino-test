@@ -8,6 +8,7 @@
         "php": "^8.2.2",
         "ext-bcmath": "*",
         "guzzlehttp/guzzle": "^7.2",
+        "jessarcher/laravel-castable-data-transfer-object": "^2.2",
         "laravel/framework": "^9.19",
         "laravel/sanctum": "^3.0",
         "laravel/tinker": "^2.7"

@@ -36,7 +36,7 @@ class GameResource extends JsonResource
             $this->mergeWhen(
                 $this->isCompleted,
                 [
-                    'result'      => floatval($this->currency->toDisplay($this->result)),
+                    'result'      => floatval($this->currency->toDisplay($this->result??'0')),
                     'raw_result'  => $this->result,
                     'is_winner'   => $this->is_winner,
                     'multiplier'  => sprintf('%0.00f', $this->multiplier),
@@ -45,12 +45,13 @@ class GameResource extends JsonResource
             $this->mergeWhen(
                 !$this->isCompleted && $this->user_id == $request->user()->id,
                 [
-                    'actions' => array_map(
-                        fn($action) => [
-                            'action' => $action,
-                            'href'   => route('gameAction', ['action' => $action, 'game' => $this])
-                        ],
-                        $this->getActions()),
+                    'actions' => $this->getActions(),
+//                        array_map(
+//                        fn($action) => [
+//                            'action' => dump($action),
+//                            'href'   => route('gameAction', ['action' => $action, 'game' => $this])
+//                        ],
+//                        $this->getActions()),
                 ]
             )
         ];

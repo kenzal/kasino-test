@@ -7,22 +7,24 @@ use App\Models\Traits\Relations\BelongsToUser;
 use BadMethodCallException;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @property      string   $amount
- * @property      Carbon   $completed_at
- * @property-read Carbon   $created_at
- * @property      Currency $currency
- * @property      int      $currency_id
- * @property-read int      $id
- * @property-read bool     $isCompleted
- * @property-read bool     $is_winner
- * @property-read string   $multiplier
- * @property      string   $name
- * @property      string   $result
+ * @property      string             $amount
+ * @property      Carbon             $completed_at
+ * @property-read Carbon             $created_at
+ * @property      Currency           $currency
+ * @property      int                $currency_id
+ * @property-read int                $id
+ * @property-read bool               $isCompleted
+ * @property-read bool               $is_winner
+ * @property-read string             $multiplier
+ * @property      string             $name
+ * @property      string             $result
+ * @property      Collection|Round[] $rounds
  */
 class Game extends BaseModel
 {
@@ -68,6 +70,12 @@ class Game extends BaseModel
         return new $resource($this);
     }
 
+
+    protected function increaseWager(string $amount): self
+    {
+        $this->amount = bcadd($this->amount, $amount);
+        return $this;
+    }
 
     protected function isCompleted(): Attribute
     {

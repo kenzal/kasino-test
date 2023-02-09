@@ -30,7 +30,7 @@ class Currency extends BaseModel
         'contract',
     ];
 
-    public static function bySymbol(string $symbol): self {
+    public static function fromSymbol(string $symbol): self {
         return self::whereSymbol($symbol)->firstOrFail();
     }
 

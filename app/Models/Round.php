@@ -12,13 +12,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  *
- * @property-read Carbon                  $created_at
+ * @property      Carbon                  $created_at
  * @property      Game                    $game
  * @property      int                     $game_id
  * @property      int                     $game_round
  * @property-read int                     $id
  * @property      int                     $nonce
- * @property      Round|null              $previous_round
+ * @property      Round|null              $previousRound
  * @property      int                     $previous_round_id
  * @property      string|int|object|array $result
  * @property      Seed                    $seed
@@ -45,6 +45,15 @@ class Round extends Model
     public function seed(): BelongsTo|Seed
     {
         return $this->belongsTo(Seed::class);
+    }
+
+    public function game(): BelongsTo|Game
+    {
+        return $this->belongsTo(Game::class);
+    }
+    public function previousRound(): BelongsTo|Round
+    {
+        return $this->belongsTo(Round::class);
     }
 
     public function getHash(): string
@@ -81,7 +90,6 @@ class Round extends Model
 
         /** @noinspection PhpPossiblePolymorphicInvocationInspection */
         $this->nonce = Round::query()
-                            ->where('game_round', $game_round)
                             ->where('seed_id', $seedId)
                             ->selectRaw('COALESCE(MAX(nonce),0)+1 as "nonce"')
                             ->first()->nonce;
