@@ -6,8 +6,6 @@ use App\Http\Resources\GameResource;
 use App\Http\Resources\Games\Blackjack\HandCollection;
 use App\Http\Resources\Games\Blackjack\HandResource;
 use App\Models\Games\Blackjack;
-use App\Models\Games\Dice;
-use App\Models\Round;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\Request;
 use JsonSerializable;
@@ -30,15 +28,16 @@ class BlackjackResource extends GameResource
 
         $result      = $finalRound->result;
         $dealersHand = $result->dealer;
-
-        $dealersHand->hand[0] = null;
+        if (!$this->isCompleted) {
+            $dealersHand->hand[1] = null;
+        }
         $response = array_merge(
 
             [
                 'actions'     => $result->actions,
                 'dealer'      => new HandResource($dealersHand),
                 'active_hand' => $this->when(count($result->hands) > 1, $result->active_hand),
-                'player' => new HandCollection($finalRound->result->hands),
+                'player'      => new HandCollection($finalRound->result->hands),
             ],
             parent::toArray($request),
         );

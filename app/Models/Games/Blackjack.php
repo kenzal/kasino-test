@@ -63,7 +63,7 @@ class Blackjack extends Game
             $dealerHand    = new Hand(hand: $dealerCards);
             $playerHand    = new Hand(hand: [$cards[0], $cards[2]], wager: $this->amount, currency: $this->currency);
             $roundResult   = (new RoundResult)->setDealer($dealerHand)->setHands([$playerHand]);
-            $askInsurance  = $this->askInsurance($dealerHand->hand);
+            $askInsurance  = $this->askInsurance($dealerHand);
             $playerNatural = $playerHand->isNatural();
             if ($askInsurance) {
                 if ($playerNatural) {
@@ -82,9 +82,14 @@ class Blackjack extends Game
                     }
                     $this->completed_at = now();
                 } else {
-                    $roundResult->actions = ['hit', 'stand', 'double'];
-                    if ($playerHand->canSplit()) {
-                        $roundResult->actions[] = 'split';
+                    if ($this->dealerShows10($dealerHand) && $dealerHand->isNatural()) {
+                        $this->result       = 0;
+                        $this->completed_at = now();
+                    } else {
+                        $roundResult->actions = ['hit', 'stand', 'double'];
+                        if ($playerHand->canSplit()) {
+                            $roundResult->actions[] = 'split';
+                        }
                     }
                 }
             }
@@ -278,34 +283,54 @@ class Blackjack extends Game
      *
      * @return bool
      */
-    protected function askInsurance(array $dealerCards): bool
+    protected function askInsurance(Hand $dealerHand): bool
     {
-        return $dealerCards[1]->rank() == Rank::ACE;
+        return $dealerHand->hand[0]->rank() == Rank::ACE;
+    }
+
+    protected function dealerShows10(Hand $dealerHand): bool
+    {
+        return self::getCardValue($dealerHand->hand[0]) == 10;
+    }
+
+    public static function getCardValue(Card $card): ?int
+    {
+        $rank = $card->rank();
+        return match ($rank->value) {
+            1              => null,
+            10, 11, 12, 13 => 10,
+            default        => $rank->value
+        };
     }
 
     /**
      * @param  Round  $round
      * @param  int    $count
+     * @param  bool   $fresh
      *
      * @return int[]
      */
-    private function drawCards(Round $round, int $count): array
+    private function drawCards(Round $round, int $count, bool $fresh = false): array
     {
-
+        static $start = 0;
+        if ($fresh) {
+            $start = 0;
+        }
         $hash = $latestHash = $round->getHash();
-        while (strlen($hash) < 8 * $count) {
+        while (strlen($hash) < 8 * ($start + $count)) {
             $hash .= ($latestHash = hash('sha256', implode(':', [$round->seed->server_seed, $latestHash])));
         }
         $oldScale = bcscale(20);
         $cards    = [];
-        foreach (range(0, ($count - 1)) as $place) {
+        foreach (range($start, ($start + $count - 1)) as $place) {
             $num = 0;
             foreach (range(0, 3) as $byte) {
                 $num = bcadd($num,
                              bcdiv(hexdec(substr($hash, $place * 8 + (3 - $byte) * 2, 2)), bcpow(256, $byte + 1)));
             }
-            $cards[$place] = (int) bcmul($num, '52', 0);
+            $cards[] = (int) bcmul($num, '52', 0);
         }
+        $start += count($cards);
         bcscale($oldScale);
         return $cards;
     }

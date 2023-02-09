@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\Games\GameImmutableException;
+use App\Exceptions\Games\InvalidGameAction;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Requests\Games;
 use App\Http\Requests\Games\BlackjackRequest;
@@ -16,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\Exception\BadRequestException;
+use Symfony\Component\HttpFoundation\Response;
 
 /*
 |--------------------------------------------------------------------------
@@ -52,7 +54,7 @@ Route::post('/games/{game}/{action}',
             throw new GameImmutableException;
         }
         if (!in_array($action, $game->getActions())) {
-            throw new BadRequestException;
+            return response("Action not allowed at this time for this game.", Response::HTTP_METHOD_NOT_ALLOWED);
         }
         $method = 'action'.ucfirst($action);
         $game->$method();
