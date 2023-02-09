@@ -16,19 +16,16 @@ class HandResource extends JsonResource
 {
     public function toArray($request): array|Arrayable|JsonSerializable
     {
-        $currency = data_get($this->resource, 'currency');
-        if($currency) {
-            $currency = is_string($currency) ? $currency : data_get($currency, 'symbol');
-            $currency = Currency::fromSymbol($currency);
-        } else {
-            $currency = Currency::firstOrFail();
-        }
+        $currency = $this->currency;
+        $wager = $this->wager ? $this->currency->toDisplay($this->wager) : null;
         return [
-            'wager' => $this->when($currency,floatval($currency->toDisplay(data_get($this->resource, 'wager', '')))),
+            'wager' => $this->when($wager,floatval($wager)),
             'hand' => array_map(
-                fn(Card|int|null $card)=>is_null($card) ? null : (is_int($card) ? Card::from($card) : $card)->name,
+                fn(Card|null $card)=>is_null($card) ? null : $card->name,
                 data_get($this->resource, 'hand')
             ),
+            'showing' => $this->when($this->hasHiddenCards(),$this->value()),
+            'value' => $this->when(!$this->hasHiddenCards(),$this->value()),
         ];
     }
 }

@@ -17,7 +17,7 @@ class Hand extends DataTransferObject implements JsonSerializable, Arrayable
 {
     public ?Currency $currency = null;
     /**
-     * @var Card[]
+     * @var ?Card[]
      */
     public array   $hand  = [];
     public ?string $wager = null;
@@ -38,6 +38,29 @@ class Hand extends DataTransferObject implements JsonSerializable, Arrayable
         if(config('games.blackjack.split_on_value'))
             return Blackjack::getCardValue($this->hand[0]) === Blackjack::getCardValue($this->hand[1]);
         return $this->hand[0]->rank() === $this->hand[1]->rank();
+    }
+
+    public function hasHiddenCards():bool
+    {
+        return in_array(null, $this->hand);
+    }
+
+    public function value():int|array
+    {
+        //Filter out hidden cards
+        $hand = array_filter($this->hand);
+        $values = array_map(fn(Card $card)=>Blackjack::getCardValue($card), $hand);
+        sort($values);
+        //Consecutive Aces always value at 1
+        foreach($values as $key=>$value) {
+            if($key && !$value) $values[$key]=1;
+        }
+        if($values[0]) return array_sum($values);
+        //Ace logic
+        $withoutAce = array_sum($values);
+        $alts = [$withoutAce+1, $withoutAce+11];
+        if($alts[1]==21) return 21;
+        return array_filter($alts, fn($total)=>$total<21);
     }
 
 

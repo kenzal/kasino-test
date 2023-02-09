@@ -310,7 +310,7 @@ class Blackjack extends Game
      *
      * @return int[]
      */
-    private function drawCards(Round $round, int $count, bool $fresh = false): array
+    private function drawCards(Round $round, int $count = 1, bool $fresh = false): array
     {
         static $start = 0;
         if ($fresh) {
