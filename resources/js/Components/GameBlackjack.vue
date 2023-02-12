@@ -1,7 +1,7 @@
 <template #default>
     <div>
-        <div class="dealer-block">Dealer Shows:
-            <div>Value: {{game?.dealer?.value}}</div>
+        <div class="dealer-block">
+            <div>Dealer Shows: {{game?.dealer?.value ? game?.dealer?.value : game?.dealer?.showing}}</div>
             <ul class="cardHand flex">
                 <li v-for="(card,cardIndex) in game?.dealer?.hand">
                     <PlayingCardBack height="100" v-if="!card"/>
