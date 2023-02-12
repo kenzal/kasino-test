@@ -6,13 +6,16 @@ use App\Enums\Cards\Card;
 use App\Enums\Cards\Rank;
 use App\Exceptions\Games\GameImmutableException;
 use App\Exceptions\Games\InvalidGameAction;
+use App\Exceptions\Games\UnexpectedHashChangeException;
 use App\Models\Game;
 use App\Models\Round;
+use App\Models\User;
 use App\Values\Games\Blackjack\Hand;
 use App\Values\Games\Blackjack\RoundResult;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\QueryException;
+use Spatie\DataTransferObject\Exceptions\UnknownProperties;
 
 /**
  * @property Round $lastRound;
@@ -35,6 +38,16 @@ class Blackjack extends Game
         return $this->hasOne(Round::class, 'game_id')
                     ->ofMany('game_round')
                     ->withCasts(['result' => RoundResult::class]);
+    }
+
+    public static function firstOpenGame(User $user): ?self
+    {
+        /** @var Blackjack $game */
+        $game = self::query()
+                    ->where('user_id', $user->id)
+                    ->whereNull('completed_at')
+                    ->first();
+        return $game;
     }
 
     public function getActions(): array
@@ -108,18 +121,138 @@ class Blackjack extends Game
     }
 
     //region Actions
+
+    /**
+     * @throws UnknownProperties
+     * @throws GameImmutableException
+     * @throws InvalidGameAction
+     */
     public function actionHit(): self
     {
+        $lastRound = $this->lastRound;
+        /** @var RoundResult $roundResult */
+        $round                    = $lastRound->replicate(['seed_id', 'nonce', 'game_round']);
+        $round->game_round        = $lastRound->game_round + 1;
+        $round->previous_round_id = $lastRound->id;
+        $roundResult              = is_array($round->result) ? new RoundResult($round->result) : $round->result;
+        $activeHand               = $roundResult->hands[$roundResult->active_hand];
+        while (!$round->exists) {
+            $this->refreshRound($round);
+            $activeHand->hand[]                            = Card::from($this->drawCards($round)[0]);
+            $roundResult->hands[$roundResult->active_hand] = $activeHand;
+            $round->result                                 = $roundResult;
+            try {
+                if ($activeHand->standValue() >= 21) {
+                    $this->actionStand($round);
+                } else {
+                    $roundResult->actions = ['hit', 'stand'];
+                    $round->result        = $roundResult;
+                }
+                if ($this->isCompleted) {
+                    $round->created_at = $this->completed_at;
+                }
+                $round->save();
+                $this->save();
+            } catch (QueryException|UnexpectedHashChangeException $e) {
+                //try again
+            }
+        }
         return $this;
     }
 
-    public function actionStand(): self
+    /**
+     * @throws UnknownProperties
+     * @throws GameImmutableException
+     * @throws UnexpectedHashChangeException
+     */
+    public function actionStand(Round $round = null): self
     {
+        $existingHash = null;
+        if ($round) {
+            $existingHash = $round->getHash();
+        } else {
+            $lastRound = $this->lastRound;
+            /** @var RoundResult $roundResult */
+            $round                    = $lastRound->replicate(['seed_id', 'nonce', 'game_round']);
+            $round->game_round        = $lastRound->game_round + 1;
+            $round->previous_round_id = $lastRound->id;
+        }
+        $roundResult          = is_array($round->result) ? new RoundResult($round->result) : $round->result;
+        $roundResult->actions = [];
+        do {
+            $roundResult->active_hand++;
+            $activeHand = ($roundResult->active_hand < count($roundResult->hands)) ? $roundResult->hands[$roundResult->active_hand] : null;
+        } while ($activeHand && $activeHand->value() == 21);
+        while (!$round->exists) {
+            $this->refreshRound($round);
+            if ($existingHash and $existingHash != $round->getHash()) {
+                throw new UnexpectedHashChangeException;
+            }
+            if ($roundResult->active_hand == count($roundResult->hands)) {
+                $round->result = $roundResult;
+                if (array_filter($roundResult->hands, fn(Hand $hand) => $hand->standValue() <= 21)) {
+                    $this->resolveDealer($round);
+                }
+                $this->completed_at = now();
+                $roundResult        = is_array($round->result) ? new RoundResult($round->result) : $round->result;
+                $this->result       = $roundResult->getWinningAmount();
+            } else {
+                // On a fresh (2-card) active hand that does not value 21 (Decision Time!)
+                $roundResult->actions = ['hit', 'stand', 'double'];
+                if ($activeHand->canSplit()) {
+                    $roundResult->actions[] = 'split';
+                }
+            }
+            $round->result = $roundResult;
+            try {
+                if ($this->isCompleted) {
+                    $round->created_at = $this->completed_at;
+                }
+                $round->save();
+                $this->save();
+            } catch (QueryException $e) {
+                //try again
+            }
+        }
+
         return $this;
     }
 
+    /**
+     * @throws UnknownProperties
+     * @throws InvalidGameAction
+     */
     public function actionDouble(): self
     {
+        $lastRound = $this->lastRound;
+        /** @var RoundResult $roundResult */
+        $round                    = $lastRound->replicate(['seed_id', 'nonce', 'game_round']);
+        $round->game_round        = $lastRound->game_round + 1;
+        $round->previous_round_id = $lastRound->id;
+        $roundResult              = is_array($round->result) ? new RoundResult($round->result) : $round->result;
+        $activeHand               = $roundResult->hands[$roundResult->active_hand];
+        if (count($activeHand->hand) != 2) {
+            throw new InvalidGameAction;
+        }
+        $this->increaseWager($activeHand->wager);
+        $activeHand->wager = bcmul($activeHand->wager, 2, 0);
+        while (!$round->exists) {
+            $this->refreshRound($round);
+            $activeHand->hand[]                            = Card::from($this->drawCards($round)[0]);
+            $roundResult->hands[$roundResult->active_hand] = $activeHand;
+            $round->result                                 = $roundResult;
+            try {
+                $this->actionStand($round);
+                if ($this->isCompleted) {
+                    $round->created_at = $this->completed_at;
+                }
+                $round->save();
+                $this->save();
+            } catch (QueryException|UnexpectedHashChangeException $e) {
+                //try again
+            }
+        }
+
         return $this;
     }
 
@@ -177,6 +310,7 @@ class Blackjack extends Game
     /**
      * @throws GameImmutableException
      * @throws InvalidGameAction
+     * @throws UnknownProperties
      */
     public function actionInsuranceYes(): self
     {
@@ -186,25 +320,33 @@ class Blackjack extends Game
         $round = new Round;
         $round->game()->associate($this);
         $round->previousRound()->associate($this->rounds()->first());
-        $round->result     = $round->previousRound->result;
+        $roundResult = $round->previousRound->result instanceof RoundResult
+            ? $round->previousRound->result
+            : new RoundResult($round->previousRound->result);
+
         $round->game_round = 1;
         $originalAmount    = $this->amount;
         bcscale(0);
-        $insurance                  = bcdiv($originalAmount, 2);
-        $round->result['insurance'] = $insurance;
+        $insurance = bcdiv($originalAmount, 2);
+
+        $roundResult->insurance = $insurance;
         $this->increaseWager($insurance);
         while (!$round->exists) {
             $this->refreshRound($round);
 
-            if ($round->previousRound->result['dealer']->isNatural()) {
-                $this->result       = bcmul($insurance, 2);
+            if ($roundResult->dealer->isNatural()) {
+                $this->result       = $roundResult->hands[0]->isNatural() ? $originalAmount : bcmul($insurance, 2);
+                $this->completed_at = now();
+            } elseif ($roundResult->hands[0]->isNatural()) {
+                $this->result       = bcdiv(bcmul(3, $this->amount), 2, 0);
                 $this->completed_at = now();
             } else {
-                $round->result['actions'] = ['hit', 'stand', 'double'];
-                if ($round->result['hands'][0]->canSplit()) {
-                    $round->result['actions'][] = 'split';
+                $roundResult->actions = ['hit', 'stand', 'double'];
+                if ($roundResult->hands[0]->canSplit()) {
+                    $roundResult->actions[] = 'split';
                 }
             }
+            $round->result = $roundResult;
             try {
                 if ($this->isCompleted) {
                     $round->created_at = $this->completed_at;
@@ -226,6 +368,11 @@ class Blackjack extends Game
         return $this->actionInsuranceNo();
     }
 
+    /**
+     * @throws UnknownProperties
+     * @throws GameImmutableException
+     * @throws InvalidGameAction
+     */
     public function actionInsuranceNo(): self
     {
         if ($this->rounds()->count() != 1) {
@@ -234,21 +381,25 @@ class Blackjack extends Game
         $round = new Round;
         $round->game()->associate($this);
         $round->previousRound()->associate($this->rounds()->first());
-        $round->result     = $round->previousRound->result;
+        $roundResult = $round->previousRound->result instanceof RoundResult
+            ? $round->previousRound->result
+            : new RoundResult($round->previousRound->result);
+
         $round->game_round = 1;
         bcscale(0);
         while (!$round->exists) {
             $this->refreshRound($round);
 
-            if ($round->previousRound->result['dealer']->isNatural()) {
+            if ($round->previousRound->result->dealer->isNatural()) {
                 $this->result       = 0;
                 $this->completed_at = now();
             } else {
-                $round->result['actions'] = ['hit', 'stand', 'double'];
-                if ($round->result['hands'][0]->canSplit()) {
-                    $round->result['actions'][] = 'split';
+                $roundResult->actions = ['hit', 'stand', 'double'];
+                if ($roundResult->hands[0]->canSplit()) {
+                    $roundResult->actions[] = 'split';
                 }
             }
+            $round->result = $roundResult;
             try {
                 if ($this->isCompleted) {
                     $round->created_at = $this->completed_at;
@@ -301,6 +452,18 @@ class Blackjack extends Game
             10, 11, 12, 13 => 10,
             default        => $rank->value
         };
+    }
+
+    /**
+     * @throws UnknownProperties
+     */
+    protected function resolveDealer(Round $round)
+    {
+        $roundResult = is_array($round->result) ? new RoundResult($round->result) : $round->result;
+        while ($roundResult->dealer->standValue() < 17) {
+            $roundResult->dealer->hand[] = Card::from($this->drawCards($round)[0]);
+        }
+        $round->result = $roundResult;
     }
 
     /**

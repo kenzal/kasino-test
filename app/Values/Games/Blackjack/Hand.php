@@ -35,7 +35,9 @@ class Hand extends DataTransferObject implements JsonSerializable, Arrayable
         if (count($this->hand) != 2) {
             return false;
         }
-        if(config('games.blackjack.split_on_value'))
+
+        dd(["split"=>config('games.blackjack.split_on_value', false)]);
+        if(config('games.blackjack.split_on_value', false))
             return Blackjack::getCardValue($this->hand[0]) === Blackjack::getCardValue($this->hand[1]);
         return $this->hand[0]->rank() === $this->hand[1]->rank();
     }
@@ -49,21 +51,33 @@ class Hand extends DataTransferObject implements JsonSerializable, Arrayable
     {
         //Filter out hidden cards
         $hand = array_filter($this->hand);
-        $values = array_map(fn(Card $card)=>Blackjack::getCardValue($card), $hand);
+
+        //Aces value as null and sort to the front
+        $values = array_map(fn(Card $card) => Blackjack::getCardValue($card), $hand);
         sort($values);
+
         //Consecutive Aces always value at 1
-        foreach($values as $key=>$value) {
-            if($key && !$value) $values[$key]=1;
+        foreach ($values as $key => $value) {
+            if ($key && !$value) {
+                $values[$key] = 1;
+            }
         }
-        if($values[0]) return array_sum($values);
+
+        if ($values[0]) {
+            return array_sum($values);
+        }
+
         //Ace logic
         $withoutAce = array_sum($values);
         $alts = [$withoutAce+1, $withoutAce+11];
         if($alts[1]==21) return 21;
-        return array_filter($alts, fn($total)=>$total<21);
+        return array_filter($alts, fn($total)=>$total<21) ?: $alts[0];
     }
 
-
+    public function standValue():int{
+        if(!$this->value()) dd($this);
+        return max((array)$this->value());
+    }
 
     public function isNatural(): bool
     {

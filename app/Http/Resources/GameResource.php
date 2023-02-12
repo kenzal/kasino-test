@@ -13,6 +13,7 @@ use JsonSerializable;
  */
 class GameResource extends JsonResource
 {
+
     /**
      * Transform the resource into an array.
      *
@@ -39,7 +40,7 @@ class GameResource extends JsonResource
                     'result'      => floatval($this->currency->toDisplay($this->result??'0')),
                     'raw_result'  => $this->result,
                     'is_winner'   => $this->is_winner,
-                    'multiplier'  => sprintf('%0.00f', $this->multiplier),
+                    'multiplier'  => floatval(sprintf('%0.00f', $this->multiplier)),
                     'round_count' => $this->rounds()->count(),
                 ]),
             $this->mergeWhen(

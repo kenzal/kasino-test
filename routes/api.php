@@ -1,7 +1,6 @@
 <?php
 
 use App\Exceptions\Games\GameImmutableException;
-use App\Exceptions\Games\InvalidGameAction;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Requests\Games;
 use App\Http\Requests\Games\BlackjackRequest;
@@ -16,7 +15,6 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpFoundation\Response;
 
 /*
@@ -110,7 +108,12 @@ Route::post('/play/gems',
 Route::post('/play/blackjack',
     function (BlackjackRequest $request) {
         /** @var User $user */
-        $user = $request->user();
+        $user      = $request->user();
+        $foundOpen = Blackjack::firstOpenGame($user);
+        if ($foundOpen) {
+            return \response("Game {$foundOpen->id} already in progress.", REsponse::HTTP_CONFLICT)
+                ->header('Location', route('game', $foundOpen));
+        }
         $game = new Blackjack(['amount' => $request->amount]);
         $game->user()->associate($user);
         $game->currency()->associate($request->currency);

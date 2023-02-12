@@ -36,7 +36,7 @@ class BlackjackResource extends GameResource
             [
                 'actions'     => $result->actions,
                 'dealer'      => new HandResource($dealersHand),
-                'active_hand' => $this->when(count($result->hands) > 1, $result->active_hand),
+                'active_hand' => $result->active_hand,
                 'player'      => new HandCollection($finalRound->result->hands),
             ],
             parent::toArray($request),

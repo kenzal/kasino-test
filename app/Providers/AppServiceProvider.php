@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Database\Grammar;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\ServiceProvider;
+use Inertia\ResponseFactory;
 
 class AppServiceProvider extends ServiceProvider
 {
