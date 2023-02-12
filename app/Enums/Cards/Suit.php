@@ -4,10 +4,10 @@ namespace App\Enums\Cards;
 
 enum Suit: string
 {
-    case SPADES   = 'Spades';
-    case HEARTS   = 'Hearts';
-    case CLUBS    = 'Clubs';
-    case DIAMONDS = 'Diamonds';
+    case SPADES   = 'spades';
+    case HEARTS   = 'hearts';
+    case CLUBS    = 'clubs';
+    case DIAMONDS = 'diamonds';
 
     public function symbol():string
     {

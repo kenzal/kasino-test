@@ -57,7 +57,7 @@ const gamesArray = ref(props.games);
 
 const vDateShow = {
     beforeMount: (el, binding) => {
-        el.innerText=moment(binding.value).fromNow();
+        el.innerText=moment.utc(binding.value).fromNow();
     }
 }
 const showGame = ref(false);

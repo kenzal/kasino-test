@@ -21,7 +21,13 @@ class HandResource extends JsonResource
         return [
             'wager' => $this->when($wager,floatval($wager)),
             'hand' => array_map(
-                fn(Card|null $card)=>is_null($card) ? null : $card->name,
+                fn(Card|null $card)=>is_null($card)
+                    ? null
+                    : [
+                        'name'=>$card->name,
+                        'rank'=>$card->rank()->value,
+                        'suit'=>$card->suit()->value,
+                       ],
                 data_get($this->resource, 'hand')
             ),
             'showing' => $this->when($this->hasHiddenCards(),$this->value()),

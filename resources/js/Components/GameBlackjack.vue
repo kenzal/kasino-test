@@ -2,7 +2,12 @@
     <div>
         <div class="dealer-block">Dealer Shows:
             <div>Value: {{game?.dealer?.value}}</div>
-            <ul><li v-for="card in game?.dealer?.hand">{{card}}</li></ul>
+            <ul class="cardHand flex">
+                <li v-for="(card,cardIndex) in game?.dealer?.hand">
+                    <PlayingCardBack height="100" v-if="!card"/>
+                    <PlayingCard height="100" v-else :suit="card.suit" :rank="card.rank"/>
+                </li>
+            </ul>
         </div>
         <div class="player-block grid gap-4" :class="'grid-cols-'+game?.player?.length">
             <div class="player-hand"
@@ -10,7 +15,11 @@
                  :class="(game?.active_hand === index) ? 'active-hand' : ''"
             >
                 <span>Value: {{hand.value}}</span>
-                <ul><li v-for="card in hand.hand">{{card}}</li></ul>
+                <ul class="cardHand">
+                    <li v-for="(card,cardIndex) in hand.hand">
+                        <PlayingCard height="100" :suit="card.suit" :rank="card.rank"/>
+                    </li>
+                </ul>
                 <div class="action-buttons" v-if="!game?.actions?.isEmpty && index===game?.active_hand">
                     <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full"
                             v-for="action in game?.actions"
@@ -25,6 +34,8 @@
 
 <script setup>
 import {ref,onBeforeMount} from 'vue'
+import PlayingCard from "@/Components/PlayingCard.vue";
+import PlayingCardBack from "@/Components/PlayingCardBack.vue";
 const emit = defineEmits(['refresh'])
 const game = ref(null)
 
@@ -54,6 +65,16 @@ onBeforeMount(async () => {
 <style scoped>
 .active-hand {
     border: double black 3px;
+    padding: 5px;
+}
+.cardHand {
+    height:100px;
+    margin: 5px;
+    padding-left: 0px;
+    display: flex;
 }
 
+.cardHand li {
+    margin-right: -50px
+}
 </style>

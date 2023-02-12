@@ -36,7 +36,6 @@ class Hand extends DataTransferObject implements JsonSerializable, Arrayable
             return false;
         }
 
-        dd(["split"=>config('games.blackjack.split_on_value', false)]);
         if(config('games.blackjack.split_on_value', false))
             return Blackjack::getCardValue($this->hand[0]) === Blackjack::getCardValue($this->hand[1]);
         return $this->hand[0]->rank() === $this->hand[1]->rank();
