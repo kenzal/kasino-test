@@ -8,6 +8,7 @@ use App\Models\Game;
 use App\Models\Games\Blackjack;
 use App\Models\Games\Dice;
 use App\Models\Games\Gems;
+use App\Models\Games\Razzle;
 use App\Models\Round;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -102,6 +103,21 @@ Route::post('/play/gems',
         /** @var User $user */
         $user = $request->user();
         $game = new Gems(['amount' => $request->amount]);
+        $game->user()->associate($user);
+        $game->currency()->associate($request->currency);
+        $game->play();
+
+        return $game->refresh()
+                    ->toResource()
+                    ->response()
+                    ->header('Location', route('game', $game));
+
+    });
+Route::post('/play/razzle',
+    function (Requests\Games\RazzleRequest $request) {
+        /** @var User $user */
+        $user = $request->user();
+        $game = new Razzle(['amount' => $request->amount]);
         $game->user()->associate($user);
         $game->currency()->associate($request->currency);
         $game->play();

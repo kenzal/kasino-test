@@ -161,6 +161,13 @@ class Game extends BaseModel
         return $this;
     }
 
+    protected function payOut(string $amount): self
+    {
+        $this->result ??= 0;
+        $this->result = bcadd($this->result, $amount,0);
+        return $this;
+    }
+
     protected function isCompleted(): Attribute
     {
         return Attribute::make(
