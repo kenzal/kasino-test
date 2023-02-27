@@ -22,33 +22,10 @@ use Spatie\DataTransferObject\Exceptions\UnknownProperties;
  */
 class Blackjack extends Game
 {
+
     // region Metadata
-    protected $table = 'games_blackjack';
-
-    /**
-     * @return HasMany
-     */
-    public function rounds(): HasMany|array
-    {
-        return parent::rounds()->withCasts(['result' => RoundResult::class]);
-    }
-
-    public function lastRound(): HasOne|Round
-    {
-        return $this->hasOne(Round::class, 'game_id')
-                    ->ofMany('game_round')
-                    ->withCasts(['result' => RoundResult::class]);
-    }
-
-    public static function firstOpenGame(User $user): ?self
-    {
-        /** @var Blackjack $game */
-        $game = self::query()
-                    ->where('user_id', $user->id)
-                    ->whereNull('completed_at')
-                    ->first();
-        return $game;
-    }
+    protected         $table            = 'games_blackjack';
+    protected ?string $roundResultClass = RoundResult::class;
 
     public function getActions(): array
     {

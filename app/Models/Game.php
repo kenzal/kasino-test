@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Http\Resources\GameResource;
+use App\Models\Games\Blackjack;
 use App\Models\Traits\Relations\BelongsToUser;
+use App\Models\Traits\Relations\HasRounds;
 use App\Support\Collections\GameCollection;
 use BadMethodCallException;
 use Carbon\Carbon;
@@ -32,6 +34,7 @@ use InvalidArgumentException;
 class Game extends BaseModel
 {
     use BelongsToUser;
+    use HasRounds;
 
     public $timestamps = false;
 
@@ -51,6 +54,16 @@ class Game extends BaseModel
         'is_winner'    => 'boolean',
     ];
 
+    public static function firstOpenGame(User $user): ?Blackjack
+    {
+        /** @var Blackjack $game */
+        $game = self::query()
+                     ->where('user_id', $user->id)
+                     ->whereNull('completed_at')
+                     ->first();
+        return $game;
+    }
+
     public function newCollection(array $models = []): GameCollection
     {
         return new GameCollection($models);
@@ -69,14 +82,6 @@ class Game extends BaseModel
     public function currency(): BelongsTo|Currency
     {
         return $this->belongsTo(Currency::class);
-    }
-
-    /**
-     * @return HasMany|Round[]
-     */
-    public function rounds(): HasMany|array
-    {
-        return $this->hasMany(Round::class, 'game_id')->orderBy('game_round');
     }
 
     public function toResource(string $resource = null): JsonResource
@@ -127,6 +132,7 @@ class Game extends BaseModel
             $this->result       = bcsub($this->amount, $this->getContractedAmount(), 20);
             $this->completed_at = now();
         }
+        return true;
     }
 
     public function getContractedAmount(): string
