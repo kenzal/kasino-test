@@ -9,17 +9,12 @@ use App\Exceptions\Games\InvalidGameAction;
 use App\Exceptions\Games\UnexpectedHashChangeException;
 use App\Models\Game;
 use App\Models\Round;
-use App\Models\User;
 use App\Values\Games\Blackjack\Hand;
 use App\Values\Games\Blackjack\RoundResult;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\QueryException;
 use Spatie\DataTransferObject\Exceptions\UnknownProperties;
 
-/**
- * @property Round $lastRound;
- */
+
 class Blackjack extends Game
 {
 
@@ -100,6 +95,63 @@ class Blackjack extends Game
     //region Actions
 
     /**
+     * @param  Round     $round
+     * @param  int       $count
+     * @param  int|null  $startFrom
+     *
+     * @return int[]
+     */
+    private function drawCards(Round $round, int $count = 1, int $startFrom = null): array
+    {
+        static $start = 0;
+        if (!is_null($startFrom)) {
+            $start = $startFrom;
+        }
+        $hash = $latestHash = $this->getHash($round);
+        while (strlen($hash) < 8 * ($start + $count)) {
+            $hash .= ($latestHash = hash('sha256', implode(':', [$round->seed->server_seed, $latestHash])));
+        }
+        $oldScale = bcscale(20);
+        $cards    = [];
+        foreach (range($start, ($start + $count - 1)) as $place) {
+            $num = 0;
+            foreach (range(0, 3) as $byte) {
+                $num = bcadd($num,
+                             bcdiv(hexdec(substr($hash, $place * 8 + (3 - $byte) * 2, 2)), bcpow(256, $byte + 1)));
+            }
+            $cards[] = (int) bcmul($num, '52', 0);
+        }
+        $start += count($cards);
+        bcscale($oldScale);
+        return $cards;
+    }
+
+    /**
+     * @param  Card[]  $dealerCards
+     *
+     * @return bool
+     */
+    protected function askInsurance(Hand $dealerHand): bool
+    {
+        return $dealerHand[0]->rank() == Rank::ACE;
+    }
+
+    protected function dealerShows10(Hand $dealerHand): bool
+    {
+        return self::getCardValue($dealerHand[0]) == 10;
+    }
+
+    public static function getCardValue(Card $card): ?int
+    {
+        $rank = $card->rank();
+        return match ($rank->value) {
+            1              => null,
+            10, 11, 12, 13 => 10,
+            default        => $rank->value
+        };
+    }
+
+    /**
      * @throws UnknownProperties
      * @throws GameImmutableException
      * @throws InvalidGameAction
@@ -115,7 +167,8 @@ class Blackjack extends Game
         $activeHand               = $roundResult->hands[$roundResult->active_hand];
         while (!$round->exists) {
             $this->refreshRound($round);
-            $activeHand[]                                  = Card::from($this->drawCards(round:$round, startFrom: $roundResult->totalCards())[0]);
+            $activeHand[]                                  = Card::from($this->drawCards(round    : $round,
+                                                                                         startFrom: $roundResult->totalCards())[0]);
             $roundResult->hands[$roundResult->active_hand] = $activeHand;
             $round->result                                 = $roundResult;
             try {
@@ -195,6 +248,21 @@ class Blackjack extends Game
 
         return $this;
     }
+    //endregion
+
+    //region HelperMethods
+
+    /**
+     * @throws UnknownProperties
+     */
+    protected function resolveDealer(Round $round)
+    {
+        $roundResult = is_array($round->result) ? new RoundResult($round->result) : $round->result;
+        while ($roundResult->dealer->standValue() < 17) {
+            $roundResult->dealer[] = Card::from($this->drawCards($round)[0]);
+        }
+        $round->result = $roundResult;
+    }
 
     /**
      * @throws UnknownProperties
@@ -261,7 +329,7 @@ class Blackjack extends Game
                                          hand    : [$activeHand[$i], $cards[$i]]);
             }
             array_splice($roundResult->hands, $roundResult->active_hand, 1, $newHands);
-            $activeHand           = $roundResult->hands[$roundResult->active_hand];
+            $activeHand = $roundResult->hands[$roundResult->active_hand];
             if ($activeHand->isNatural()) {
                 do {
                     $roundResult->active_hand++;
@@ -407,104 +475,4 @@ class Blackjack extends Game
         return $this;
     }
     //endregion
-
-    //region HelperMethods
-    /**
-     * @param  Round  $round
-     *
-     * @return void
-     * @throws GameImmutableException
-     */
-    protected function refreshRound(Round $round): void
-    {
-        $this->user->unsetRelation('currentSeed');
-        $round->seed_id = $this->user->currentSeed->id;
-        $round->refreshNonce();
-    }
-
-
-    /**
-     * @param  Card[]  $dealerCards
-     *
-     * @return bool
-     */
-    protected function askInsurance(Hand $dealerHand): bool
-    {
-        return $dealerHand[0]->rank() == Rank::ACE;
-    }
-
-    protected function dealerShows10(Hand $dealerHand): bool
-    {
-        return self::getCardValue($dealerHand[0]) == 10;
-    }
-
-    public static function getCardValue(Card $card): ?int
-    {
-        $rank = $card->rank();
-        return match ($rank->value) {
-            1              => null,
-            10, 11, 12, 13 => 10,
-            default        => $rank->value
-        };
-    }
-
-    /**
-     * @throws UnknownProperties
-     */
-    protected function resolveDealer(Round $round)
-    {
-        $roundResult = is_array($round->result) ? new RoundResult($round->result) : $round->result;
-        while ($roundResult->dealer->standValue() < 17) {
-            $roundResult->dealer[] = Card::from($this->drawCards($round)[0]);
-        }
-        $round->result = $roundResult;
-    }
-
-    public function getHash(Round $round): string
-    {
-        return hash('sha256',
-                    implode(':',
-                            [
-                                $round->seed->server_seed,
-                                $round->seed->client_seed,
-                                0,
-                                $round->nonce,
-                            ]
-                    )
-        );
-    }
-
-    /**
-     * @param  Round      $round
-     * @param  int        $count
-     * @param  int|null   $startFrom
-     *
-     * @return int[]
-     */
-    private function drawCards(Round $round, int $count = 1, int $startFrom = null): array
-    {
-        static $start = 0;
-        if (!is_null($startFrom)) {
-            $start = $startFrom;
-        }
-        $hash = $latestHash = $this->getHash($round);
-        while (strlen($hash) < 8 * ($start + $count)) {
-            $hash .= ($latestHash = hash('sha256', implode(':', [$round->seed->server_seed, $latestHash])));
-        }
-        $oldScale = bcscale(20);
-        $cards    = [];
-        foreach (range($start, ($start + $count - 1)) as $place) {
-            $num = 0;
-            foreach (range(0, 3) as $byte) {
-                $num = bcadd($num,
-                             bcdiv(hexdec(substr($hash, $place * 8 + (3 - $byte) * 2, 2)), bcpow(256, $byte + 1)));
-            }
-            $cards[] = (int) bcmul($num, '52', 0);
-        }
-        $start += count($cards);
-        bcscale($oldScale);
-        return $cards;
-    }
-    //endregion
-
 }

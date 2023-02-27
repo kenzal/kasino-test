@@ -2,12 +2,15 @@
 
 namespace App\Models\Traits\Relations;
 
-use App\Models\Game;
 use App\Models\Round;
-use App\Values\Games\Blackjack\RoundResult;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property Round              $lastRound;
+ * @property Round[]|Collection $rounds
+ */
 trait HasRounds
 {
 
@@ -17,8 +20,8 @@ trait HasRounds
     {
         $relation = $this->hasOne(Round::class, 'game_id')
                          ->ofMany('game_round');
-        if($this->roundResultClass) {
-            $relation->withCasts(['result' => RoundResult::class]);
+        if ($this->roundResultClass) {
+            $relation->withCasts(['result' => $this->roundResultClass]);
         }
         return $relation;
     }
@@ -29,8 +32,8 @@ trait HasRounds
     public function rounds(): HasMany|array
     {
         $relation = $this->hasMany(Round::class, 'game_id')->orderBy('game_round');
-        if($this->roundResultClass) {
-            $relation->withCasts(['result' => RoundResult::class]);
+        if ($this->roundResultClass) {
+            $relation->withCasts(['result' => $this->roundResultClass]);
         }
         return $relation;
     }

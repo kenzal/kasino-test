@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Exceptions\Games\GameImmutableException;
 use App\Http\Resources\GameResource;
 use App\Models\Games\Blackjack;
 use App\Models\Traits\Relations\BelongsToUser;
@@ -140,6 +141,20 @@ class Game extends BaseModel
         return $this->amount;
     }
 
+    public function getHash(Round $round): string
+    {
+        return hash('sha256',
+                    implode(':',
+                            [
+                                $round->seed->server_seed,
+                                $round->seed->client_seed,
+                                0,
+                                $round->nonce,
+                            ]
+                    )
+        );
+    }
+
     protected function increaseWager(string $amount): self
     {
         $this->amount = bcadd($this->amount, $amount);
@@ -151,5 +166,18 @@ class Game extends BaseModel
         return Attribute::make(
             get: fn($value) => (bool) $this->completed_at,
         );
+    }
+
+    /**
+     * @param  Round  $round
+     *
+     * @return void
+     * @throws GameImmutableException
+     */
+    protected function refreshRound(Round $round): void
+    {
+        $this->user->unsetRelation('currentSeed');
+        $round->seed_id = $this->user->currentSeed->id;
+        $round->refreshNonce();
     }
 }
