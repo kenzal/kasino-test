@@ -18,7 +18,7 @@
                 <td v-if="game.completed_at" v-date-show="game.completed_at" :title="game.completed_at"></td>
                 <td v-if="game.completed_at" >{{ game.currency.symbol }} {{game.amount?.toFixed(2) }}</td>
                 <td v-if="game.completed_at" >{{game.multiplier?.toFixed(2)}}x</td>
-                <td v-if="game.completed_at" :class="game.is_winner ? 'winner' : 'loser'">{{game.currency.symbol }} {{game.result?.toFixed(2)}}</td>
+                <td v-if="game.completed_at" :class="(null === game?.is_winner) ? '' : game?.is_winner ? 'winner' : 'loser'">{{game.currency.symbol }} {{game.result?.toFixed(2)}}</td>
             </tr>
         </tbody>
         <Modal :show="showGame!==false" @close="closeModal">
@@ -27,7 +27,7 @@
             <div v-if="showGame.completed_at" class="grid grid-cols-3 results">
                  <div><h2>Amount</h2><span>{{ showGame?.currency?.symbol }} {{showGame?.amount?.toFixed(2) }}</span></div>
                 <div><h2>Multiplier</h2><span>{{ showGame?.multiplier?.toFixed(2) }}x</span></div>
-                <div><h2>Result</h2><span :class="showGame?.is_winner ? 'winner' : 'loser'">{{showGame?.currency?.symbol }} {{showGame?.result?.toFixed(2)}}</span></div>
+                <div><h2>Result</h2><span :class="(null === showGame?.is_winner) ? '' : showGame?.is_winner ? 'winner' : 'loser'">{{showGame?.currency?.symbol }} {{showGame?.result?.toFixed(2)}}</span></div>
             </div>
             <Component v-if="showGame!==false" :is="GameBlackjack" :endpoint="showGame.href" @refresh="refreshModal"></Component>
 

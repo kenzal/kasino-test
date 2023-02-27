@@ -88,11 +88,15 @@ class Round extends Model
         $seedId     = $this->seed_id ?? $this->seed->id;
         $game_round = $this->game_round;
 
-        /** @noinspection PhpPossiblePolymorphicInvocationInspection */
-        $this->nonce = Round::query()
-                            ->where('seed_id', $seedId)
-                            ->selectRaw('COALESCE(MAX(nonce),0)+1 as "nonce"')
-                            ->first()->nonce;
+        if($this->previousRound) {
+            $this->nonce = $this->previousRound->nonce;
+        } else {
+
+            /** @noinspection PhpPossiblePolymorphicInvocationInspection */
+        $this->nonce = Round::query()->where('seed_id', $seedId)
+                                     ->selectRaw('COALESCE(MAX(nonce),0)+1 as "nonce"')
+                                     ->first()->nonce;
+        }
         return $this;
     }
 

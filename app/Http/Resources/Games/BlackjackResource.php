@@ -6,6 +6,7 @@ use App\Http\Resources\GameResource;
 use App\Http\Resources\Games\Blackjack\HandCollection;
 use App\Http\Resources\Games\Blackjack\HandResource;
 use App\Models\Games\Blackjack;
+use App\Values\Games\Blackjack\RoundResult;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\Request;
 use JsonSerializable;
@@ -26,9 +27,10 @@ class BlackjackResource extends GameResource
     {
         $finalRound = $this->lastRound->refresh();
 
+        /** @var RoundResult $result */
         $result      = $finalRound->result;
         $dealersHand = $result->dealer;
-        if (!$this->isCompleted) {
+        if (!$this->isCompleted || $result->allBusted()) {
             $dealersHand->hand[1] = null;
         }
         $response = array_merge(

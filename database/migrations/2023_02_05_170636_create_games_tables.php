@@ -27,7 +27,7 @@ return new class extends Migration {
                 $table->timestamp('created_at')->useCurrent();
                 $table->timestamp('completed_at')->nullable();
                 $table->addColumn('uint256', 'result')->nullable();
-                $table->boolean('is_winner')->nullable()->storedAs('result > amount');
+                $table->boolean('is_winner')->nullable()->storedAs('CASE WHEN (amount<>result) THEN result > amount END');
                 $table->float('multiplier', 10, 4)->nullable()->storedAs('result/amount');
             });
 
@@ -44,25 +44,6 @@ return new class extends Migration {
                 $table->unique(['seed_id', 'nonce', 'game_round']);
             });
 
-        $sql = /** @lang PostgreSQL */
-            <<<SQL
-                DROP FUNCTION IF EXISTS nonce_available;
-                CREATE OR REPLACE FUNCTION nonce_available(_nonce bigint, _seed_id bigint)
-                  RETURNS bool AS
-                $$
-                SELECT NOT EXISTS (SELECT 1 FROM rounds WHERE nonce = $1 and seed_id = $2);
-                $$  LANGUAGE sql STABLE;
-            SQL;
-        Schema::getConnection()->unprepared($sql);
-
-
-        $sql = /** @lang PostgreSQL */
-            <<<SQL
-                ALTER TABLE rounds ADD CONSTRAINT round_nonce_unique
-                CHECK (nonce_available(nonce, seed_id)) NOT VALID;
-            SQL;
-
-        Schema::getConnection()->unprepared($sql);
         $sql = /** @lang PostgreSQL */
             <<<SQL
                 ALTER TABLE rounds ADD CONSTRAINT round_appropriate_previous

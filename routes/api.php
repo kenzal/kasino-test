@@ -2,9 +2,7 @@
 
 use App\Exceptions\Games\GameImmutableException;
 use App\Http\Controllers\CurrencyController;
-use App\Http\Requests\Games;
-use App\Http\Requests\Games\BlackjackRequest;
-use App\Http\Requests\Games\GemsRequest;
+use App\Http\Requests;
 use App\Http\Resources\GameCollection;
 use App\Models\Game;
 use App\Models\Games\Blackjack;
@@ -34,6 +32,15 @@ Route::middleware('auth:sanctum')->get('/user',
     });
 Route::resource('currency', CurrencyController::class)
      ->only(['index', 'show']);
+Route::middleware('auth:sanctum')->post('/seed/cycle', function (Requests\CycleSeedRequest $request) {
+    $currentSeed = $request->user()->currentSeed;
+    $newSeed = $currentSeed->cycle($request->clientSeed);
+    $currentSeed->refresh()->withOnly([]);
+    return [
+        'previous_seed' => $currentSeed,
+        'new_seed' => $newSeed,
+    ];
+});
 
 Route::get('/games',
     function (Request $request) {
@@ -60,7 +67,7 @@ Route::post('/games/{game}/{action}',
                     ->toResource();
     })->name('gameAction');
 Route::post('/play/dice',
-    function (Games\DiceRequest $request) {
+    function (Requests\Games\DiceRequest $request) {
         /** @var User $user */
         $user = $request->user();
         $game = match (true) {
@@ -91,7 +98,7 @@ Route::post('/play/dice',
                     ->header('Location', route('game', $game));
     });
 Route::post('/play/gems',
-    function (GemsRequest $request) {
+    function (Requests\Games\GemsRequest $request) {
         /** @var User $user */
         $user = $request->user();
         $game = new Gems(['amount' => $request->amount]);
@@ -106,7 +113,7 @@ Route::post('/play/gems',
 
     });
 Route::post('/play/blackjack',
-    function (BlackjackRequest $request) {
+    function (Requests\Games\BlackjackRequest $request) {
         /** @var User $user */
         $user      = $request->user();
         $foundOpen = Blackjack::firstOpenGame($user);

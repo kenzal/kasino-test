@@ -46,7 +46,7 @@ class RoundResult extends CastableDataTransferObject
     public function getWinningAmount(): string
     {
         $winnings = "0";
-        $dealerValue = $this->dealer->value();
+        $dealerValue = $this->dealer->standValue();
         if($dealerValue > 21) {
             foreach($this->hands as $hand) {
                 if($hand->standValue() <= 21) $winnings = bcadd($winnings, bcmul(2,$hand->wager));
@@ -59,11 +59,31 @@ class RoundResult extends CastableDataTransferObject
                 }
                 if ($standValue == $dealerValue)
                     $winnings = bcadd($winnings, $hand->wager);
-                elseif ($standValue >= $dealerValue) {
+                elseif ($hand->meetsCharlie() || $standValue > $dealerValue) {
                     $winnings = bcadd($winnings, bcmul(2,$hand->wager));
                 }
             }
         }
         return $winnings;
+    }
+
+    public function hasRoomToSplit(): bool
+    {
+        $maxHands = config('games.blackjack.max_hands');
+        if (!$maxHands) return true;
+        return (count($this->hands) < $maxHands);
+    }
+
+    public function allBusted(): bool
+    {
+        foreach($this->hands as $hand) {
+            if(!$hand->isBust()) return false;
+        }
+        return true;
+    }
+
+    public function totalCards(): int
+    {
+        return count($this->dealer) + array_sum(array_map(fn(Hand $hand)=>count($hand),$this->hands));
     }
 }

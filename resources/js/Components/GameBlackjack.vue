@@ -4,8 +4,8 @@
             <div>Dealer Shows: {{game?.dealer?.value ? game?.dealer?.value : game?.dealer?.showing}}</div>
             <ul class="cardHand flex">
                 <li v-for="(card,cardIndex) in game?.dealer?.hand">
-                    <PlayingCardBack height="100" v-if="!card"/>
-                    <PlayingCard height="100" v-else :suit="card.suit" :rank="card.rank"/>
+                    <PlayingCardBack width="70" v-if="!card"/>
+                    <PlayingCard width="70" v-else :suit="card.suit" :rank="card.rank"/>
                 </li>
             </ul>
         </div>
@@ -17,7 +17,7 @@
                 <span>Value: {{hand.value}}</span>
                 <ul class="cardHand">
                     <li v-for="(card,cardIndex) in hand.hand">
-                        <PlayingCard height="100" :suit="card.suit" :rank="card.rank"/>
+                        <PlayingCard width="70" :suit="card.suit" :rank="card.rank"/>
                     </li>
                 </ul>
                 <div class="action-buttons" v-if="!game?.actions?.isEmpty && index===game?.active_hand">
@@ -72,9 +72,15 @@ onBeforeMount(async () => {
     margin: 5px;
     padding-left: 0px;
     display: flex;
+    max-width:160px;
+    margin-right: -55px;
 }
 
 .cardHand li {
-    margin-right: -50px
+    margin-right: -55px;
+}
+
+.player-hand {
+    max-width: 165px;
 }
 </style>

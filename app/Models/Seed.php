@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Exceptions\Seed\RevealedException;
+use App\Exceptions\SeedException;
 use App\Models\Traits\Relations\BelongsToUser;
+use App\Support\Collections\GameCollection;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Exception;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -18,28 +21,48 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Seed extends BaseModel
 {
-    use HasFactory, BelongsToUser;
+    use BelongsToUser;
 
-    protected $dates = [
-        'created_at',
-        'revealed_at',
+    public    $timestamps = false;
+    protected $casts      = [
+        'created_at'  => 'datetime',
+        'revealed_at' => 'datetime',
     ];
-
-    protected $fillable = [
+    protected $fillable   = [
         'client_seed',
+        'created_at',
+        'server_seed',
+        'user_id',
+    ];
+    protected $hidden     = [
         'server_seed',
     ];
 
-    public $timestamps = false;
 
-    protected $hidden = [
-        'server_seed',
-    ];
-
-    protected function getArrayableItems(array $values)
+    /**
+     * @throws RevealedException
+     */
+    public function cycle(string $clientSeed = null): self
     {
-        $this->makeVisibleIf(fn() => $this->revealed_at, 'server_seed');
-        return parent::getArrayableItems($values);
+        if($this->isRevealed()) {
+            throw new RevealedException;
+        }
+        /** @var GameCollection $games */
+        $games = $this->games()->incomplete()->get();
+        $games->forfeitAll();
+        $this->revealed_at = now();
+        $newSeed = self::newInstance(
+            [
+                'user_id'     => $this->user_id,
+                'client_seed' => $clientSeed ?? self::generateRandomSeed(),
+                'server_seed' => self::generateRandomSeed(),
+                'created_at'  => $this->revealed_at,
+            ]
+        );
+
+        $this->save();
+        $newSeed->save();
+        return $newSeed;
     }
 
     /**
@@ -48,5 +71,24 @@ class Seed extends BaseModel
     public function games(): HasMany|array
     {
         return $this->hasMany(Game::class);
+    }
+
+    public static function generateRandomSeed(): string
+    {
+
+        try {
+            $seedSeed =  random_bytes(1024);
+        } catch (Exception $e) {
+            $seedSeed = extension_loaded('openssl')
+                ? openssl_random_pseudo_bytes(1024)
+                : str_shuffle(uniqid(mt_rand(0, 1024), true));
+        }
+        return hash('sha256', $seedSeed);
+    }
+
+    protected function getArrayableItems(array $values)
+    {
+        $this->makeVisibleIf(fn() => $this->revealed_at, 'server_seed');
+        return parent::getArrayableItems($values);
     }
 }

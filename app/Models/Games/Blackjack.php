@@ -100,7 +100,7 @@ class Blackjack extends Game
                         $this->completed_at = now();
                     } else {
                         $roundResult->actions = ['hit', 'stand', 'double'];
-                        if ($playerHand->canSplit()) {
+                        if ($playerHand->canSplit() && $roundResult->hasRoomToSplit()) {
                             $roundResult->actions[] = 'split';
                         }
                     }
@@ -138,11 +138,11 @@ class Blackjack extends Game
         $activeHand               = $roundResult->hands[$roundResult->active_hand];
         while (!$round->exists) {
             $this->refreshRound($round);
-            $activeHand->hand[]                            = Card::from($this->drawCards($round)[0]);
+            $activeHand[]                                  = Card::from($this->drawCards(round:$round, startFrom: $roundResult->totalCards())[0]);
             $roundResult->hands[$roundResult->active_hand] = $activeHand;
             $round->result                                 = $roundResult;
             try {
-                if ($activeHand->standValue() >= 21) {
+                if ($activeHand->standValue() >= 21 || (count($activeHand) == config('games.blackjack.charlie'))) {
                     $this->actionStand($round);
                 } else {
                     $roundResult->actions = ['hit', 'stand'];
@@ -177,6 +177,7 @@ class Blackjack extends Game
             $round->game_round        = $lastRound->game_round + 1;
             $round->previous_round_id = $lastRound->id;
         }
+        /** @var RoundResult $roundResult */
         $roundResult          = is_array($round->result) ? new RoundResult($round->result) : $round->result;
         $roundResult->actions = [];
         do {
@@ -199,7 +200,7 @@ class Blackjack extends Game
             } else {
                 // On a fresh (2-card) active hand that does not value 21 (Decision Time!)
                 $roundResult->actions = ['hit', 'stand', 'double'];
-                if ($activeHand->canSplit()) {
+                if ($activeHand->canSplit() && $roundResult->hasRoomToSplit()) {
                     $roundResult->actions[] = 'split';
                 }
             }
@@ -231,14 +232,14 @@ class Blackjack extends Game
         $round->previous_round_id = $lastRound->id;
         $roundResult              = is_array($round->result) ? new RoundResult($round->result) : $round->result;
         $activeHand               = $roundResult->hands[$roundResult->active_hand];
-        if (count($activeHand->hand) != 2) {
+        if (count($activeHand) != 2) {
             throw new InvalidGameAction;
         }
         $this->increaseWager($activeHand->wager);
         $activeHand->wager = bcmul($activeHand->wager, 2, 0);
         while (!$round->exists) {
             $this->refreshRound($round);
-            $activeHand->hand[]                            = Card::from($this->drawCards($round)[0]);
+            $activeHand[]                                  = Card::from($this->drawCards($round)[0]);
             $roundResult->hands[$roundResult->active_hand] = $activeHand;
             $round->result                                 = $roundResult;
             try {
@@ -269,7 +270,7 @@ class Blackjack extends Game
         $round->game_round        = $lastRound->game_round + 1;
         $round->previous_round_id = $lastRound->id;
         $activeHand               = $roundResult->hands[$roundResult->active_hand];
-        if (!$activeHand->canSplit()) {
+        if (!$activeHand->canSplit() && $roundResult->hasRoomToSplit()) {
             throw new InvalidGameAction;
         }
         $this->increaseWager($activeHand->wager);
@@ -280,13 +281,29 @@ class Blackjack extends Game
             foreach (range(0, 1) as $i) {
                 $newHands[$i] = new Hand(wager   : $activeHand->wager,
                                          currency: $activeHand->currency,
-                                         hand    : [$activeHand->hand[$i], $cards[$i]]);
+                                         hand    : [$activeHand[$i], $cards[$i]]);
             }
             array_splice($roundResult->hands, $roundResult->active_hand, 1, $newHands);
-            $roundResult->actions = ['hit', 'stand', 'double'];
             $activeHand           = $roundResult->hands[$roundResult->active_hand];
-            if ($activeHand->canSplit()) {
-                $roundResult->actions[] = 'split';
+            if ($activeHand->isNatural()) {
+                do {
+                    $roundResult->active_hand++;
+                    $activeHand = ($roundResult->active_hand < count($roundResult->hands)) ? $roundResult->hands[$roundResult->active_hand] : null;
+                } while ($activeHand && $activeHand->value() == 21);
+            }
+            if ($roundResult->active_hand == count($roundResult->hands)) {
+                $round->result = $roundResult;
+                if (array_filter($roundResult->hands, fn(Hand $hand) => $hand->standValue() <= 21)) {
+                    $this->resolveDealer($round);
+                }
+                $this->completed_at = now();
+                $roundResult        = is_array($round->result) ? new RoundResult($round->result) : $round->result;
+                $this->result       = $roundResult->getWinningAmount();
+            } else {
+                $roundResult->actions = ['hit', 'stand', 'double'];
+                if ($activeHand->canSplit() && $roundResult->hasRoomToSplit()) {
+                    $roundResult->actions[] = 'split';
+                }
             }
             try {
                 $round->result = $roundResult;
@@ -342,7 +359,7 @@ class Blackjack extends Game
                 $this->completed_at = now();
             } else {
                 $roundResult->actions = ['hit', 'stand', 'double'];
-                if ($roundResult->hands[0]->canSplit()) {
+                if ($roundResult->hands[0]->canSplit() && $roundResult->hasRoomToSplit()) {
                     $roundResult->actions[] = 'split';
                 }
             }
@@ -395,7 +412,7 @@ class Blackjack extends Game
                 $this->completed_at = now();
             } else {
                 $roundResult->actions = ['hit', 'stand', 'double'];
-                if ($roundResult->hands[0]->canSplit()) {
+                if ($roundResult->hands[0]->canSplit() && $roundResult->hasRoomToSplit()) {
                     $roundResult->actions[] = 'split';
                 }
             }
@@ -436,12 +453,12 @@ class Blackjack extends Game
      */
     protected function askInsurance(Hand $dealerHand): bool
     {
-        return $dealerHand->hand[0]->rank() == Rank::ACE;
+        return $dealerHand[0]->rank() == Rank::ACE;
     }
 
     protected function dealerShows10(Hand $dealerHand): bool
     {
-        return self::getCardValue($dealerHand->hand[0]) == 10;
+        return self::getCardValue($dealerHand[0]) == 10;
     }
 
     public static function getCardValue(Card $card): ?int
@@ -461,25 +478,39 @@ class Blackjack extends Game
     {
         $roundResult = is_array($round->result) ? new RoundResult($round->result) : $round->result;
         while ($roundResult->dealer->standValue() < 17) {
-            $roundResult->dealer->hand[] = Card::from($this->drawCards($round)[0]);
+            $roundResult->dealer[] = Card::from($this->drawCards($round)[0]);
         }
         $round->result = $roundResult;
     }
 
+    public function getHash(Round $round): string
+    {
+        return hash('sha256',
+                    implode(':',
+                            [
+                                $round->seed->server_seed,
+                                $round->seed->client_seed,
+                                0,
+                                $round->nonce,
+                            ]
+                    )
+        );
+    }
+
     /**
-     * @param  Round  $round
-     * @param  int    $count
-     * @param  bool   $fresh
+     * @param  Round      $round
+     * @param  int        $count
+     * @param  int|null   $startFrom
      *
      * @return int[]
      */
-    private function drawCards(Round $round, int $count = 1, bool $fresh = false): array
+    private function drawCards(Round $round, int $count = 1, int $startFrom = null): array
     {
         static $start = 0;
-        if ($fresh) {
-            $start = 0;
+        if (!is_null($startFrom)) {
+            $start = $startFrom;
         }
-        $hash = $latestHash = $round->getHash();
+        $hash = $latestHash = $this->getHash($round);
         while (strlen($hash) < 8 * ($start + $count)) {
             $hash .= ($latestHash = hash('sha256', implode(':', [$round->seed->server_seed, $latestHash])));
         }
